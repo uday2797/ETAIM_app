@@ -7,6 +7,7 @@ import '../../services/commute_service.dart';
 import '../../services/weather_service.dart';
 import '../../services/food_service.dart';
 import '../../models/commute_option.dart';
+import '../../models/food_option.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class DashboardViewScreen extends StatefulWidget {
@@ -298,19 +299,23 @@ class _DashboardViewScreenState extends State<DashboardViewScreen> {
   Widget _buildInsightCard(AIInsight insight) {
     Color backgroundColor;
     Color borderColor;
+    Color textColor;
 
     switch (insight.priority) {
       case 'high':
         backgroundColor = Colors.red[50]!;
         borderColor = Colors.red;
+        textColor = Colors.red[900]!;
         break;
       case 'medium':
         backgroundColor = Colors.orange[50]!;
         borderColor = Colors.orange;
+        textColor = Colors.orange[900]!;
         break;
       default:
         backgroundColor = Colors.blue[50]!;
         borderColor = Colors.blue;
+        textColor = Colors.blue[900]!;
     }
 
     return Container(
@@ -337,7 +342,7 @@ class _DashboardViewScreenState extends State<DashboardViewScreen> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: borderColor[900],
+                    color: textColor,
                   ),
                 ),
               ),
@@ -348,7 +353,7 @@ class _DashboardViewScreenState extends State<DashboardViewScreen> {
             insight.description,
             style: TextStyle(
               fontSize: 14,
-              color: borderColor[800],
+              color: textColor.withOpacity(0.8),
               height: 1.4,
             ),
           ),

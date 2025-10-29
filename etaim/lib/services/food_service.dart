@@ -1,203 +1,172 @@
 import 'package:flutter/foundation.dart';
-import '../models/commute_option.dart';
-import '../models/location.dart';
+import '../models/food_option.dart';
 import 'dart:math';
 
-class CommuteService extends ChangeNotifier {
-  List<CommuteOption> _options = [];
+class FoodService extends ChangeNotifier {
+  List<FoodOption> _currentLocationOptions = [];
+  List<FoodOption> _destinationOptions = [];
   bool _isLoading = false;
 
-  List<CommuteOption> get options => _options;
+  List<FoodOption> get currentLocationOptions => _currentLocationOptions;
+  List<FoodOption> get destinationOptions => _destinationOptions;
   bool get isLoading => _isLoading;
 
-  Future<void> fetchCommuteOptions(
-    LocationModel from,
-    LocationModel to,
-    String weather,
-    int currentHour,
-  ) async {
+  final List<Restaurant> _restaurants = [
+    Restaurant(
+      id: '1',
+      name: 'Spice Garden',
+      cuisine: 'Indian',
+      rating: 4.5,
+      imageUrl: '',
+      distance: 1.2,
+    ),
+    Restaurant(
+      id: '2',
+      name: 'Pizza Palace',
+      cuisine: 'Italian',
+      rating: 4.3,
+      imageUrl: '',
+      distance: 2.0,
+    ),
+    Restaurant(
+      id: '3',
+      name: 'Burger House',
+      cuisine: 'American',
+      rating: 4.2,
+      imageUrl: '',
+      distance: 1.5,
+    ),
+    Restaurant(
+      id: '4',
+      name: 'Chinese Wok',
+      cuisine: 'Chinese',
+      rating: 4.4,
+      imageUrl: '',
+      distance: 1.8,
+    ),
+    Restaurant(
+      id: '5',
+      name: 'Sushi Bar',
+      cuisine: 'Japanese',
+      rating: 4.6,
+      imageUrl: '',
+      distance: 2.5,
+    ),
+  ];
+
+  final List<String> _dishes = [
+    'Biryani',
+    'Margherita Pizza',
+    'Cheese Burger',
+    'Fried Rice',
+    'California Roll',
+    'Butter Chicken',
+    'Pasta Alfredo',
+    'Chicken Wings',
+    'Noodles',
+    'Ramen',
+  ];
+
+  Future<void> fetchFoodOptions(String weather, int currentHour) async {
     _isLoading = true;
     notifyListeners();
 
     await Future.delayed(const Duration(seconds: 2));
 
-    final distance = _calculateDistance(from, to);
-    final baseTime = (distance / 30 * 60).round(); // Base time in minutes
+    _currentLocationOptions = _generateFoodOptions('current', weather, currentHour);
+    _destinationOptions = _generateFoodOptions('destination', weather, currentHour);
 
-    List<CommuteOption> allOptions = [];
+    _currentLocationOptions = _applyAIRecommendations(_currentLocationOptions, weather, currentHour);
+    _destinationOptions = _applyAIRecommendations(_destinationOptions, weather, currentHour);
 
-    // Generate options for each provider and type
-    for (var provider in [CommuteProvider.rapido, CommuteProvider.ola, CommuteProvider.uber]) {
-      for (var type in CommuteType.values) {
-        allOptions.add(_generateOption(
-          provider,
-          type,
-          distance,
-          baseTime,
-          weather,
-          currentHour,
-        ));
-      }
-    }
-
-    // Add own vehicle option
-    allOptions.add(CommuteOption(
-      provider: CommuteProvider.ownVehicle,
-      type: CommuteType.bike,
-      price: 0,
-      etaMinutes: baseTime,
-      arrivalMinutes: 0,
-      distance: distance,
-      isRecommended: false,
-      reason: 'No cost',
-    ));
-
-    // Apply AI recommendations based on weather and time
-    allOptions = _applyAIRecommendations(allOptions, weather, currentHour);
-
-    _options = allOptions;
     _isLoading = false;
     notifyListeners();
   }
 
-  CommuteOption _generateOption(
-    CommuteProvider provider,
-    CommuteType type,
-    double distance,
-    int baseTime,
-    String weather,
-    int currentHour,
-  ) {
+  List<FoodOption> _generateFoodOptions(String locationType, String weather, int currentHour) {
     final random = Random();
+    List<FoodOption> options = [];
 
-    // Price calculation
-    double basePrice = 0;
-    switch (type) {
-      case CommuteType.bike:
-        basePrice = distance * 8 + random.nextInt(20);
-        break;
-      case CommuteType.auto:
-        basePrice = distance * 12 + random.nextInt(30);
-        break;
-      case CommuteType.cab:
-        basePrice = distance * 15 + random.nextInt(50);
-        break;
+    for (var restaurant in _restaurants) {
+      for (var provider in FoodProvider.values) {
+        final dishIndex = random.nextInt(_dishes.length);
+        final basePrice = 150.0 + random.nextInt(200);
+        final deliveryTime = locationType == 'current'
+            ? 20 + random.nextInt(20)
+            : 30 + random.nextInt(30);
+        final deliveryFee = locationType == 'current'
+            ? 20.0 + random.nextInt(20)
+            : 30.0 + random.nextInt(30);
+
+        options.add(FoodOption(
+          restaurant: restaurant,
+          provider: provider,
+          dishName: _dishes[dishIndex],
+          price: basePrice.toDouble(),
+          deliveryTimeMinutes: deliveryTime,
+          deliveryFee: deliveryFee.toDouble(),
+          locationType: locationType,
+        ));
+      }
     }
 
-    // Provider-specific pricing
-    double multiplier = 1.0;
-    switch (provider) {
-      case CommuteProvider.rapido:
-        multiplier = 0.9;
-        break;
-      case CommuteProvider.ola:
-        multiplier = 1.0;
-        break;
-      case CommuteProvider.uber:
-        multiplier = 1.1;
-        break;
-      case CommuteProvider.ownVehicle:
-        multiplier = 0;
-        break;
-    }
-
-    final price = basePrice * multiplier;
-    final arrivalTime = 3 + random.nextInt(7); // 3-10 minutes
-    final eta = baseTime + random.nextInt(10) - 5;
-
-    return CommuteOption(
-      provider: provider,
-      type: type,
-      price: price,
-      etaMinutes: eta,
-      arrivalMinutes: arrivalTime,
-      distance: distance,
-    );
+    return options;
   }
 
-  List<CommuteOption> _applyAIRecommendations(
-    List<CommuteOption> options,
+  List<FoodOption> _applyAIRecommendations(
+    List<FoodOption> options,
     String weather,
     int currentHour,
   ) {
-    // Find cheapest and fastest
-    final sortedByPrice = List<CommuteOption>.from(options)
-      ..sort((a, b) => a.price.compareTo(b.price));
-    final sortedByTime = List<CommuteOption>.from(options)
-      ..sort((a, b) => (a.etaMinutes + a.arrivalMinutes).compareTo(b.etaMinutes + b.arrivalMinutes));
+    final sortedByPrice = List<FoodOption>.from(options)
+      ..sort((a, b) => a.totalPrice.compareTo(b.totalPrice));
+    final sortedByTime = List<FoodOption>.from(options)
+      ..sort((a, b) => a.deliveryTimeMinutes.compareTo(b.deliveryTimeMinutes));
 
-    CommuteOption? recommended;
+    FoodOption? recommended;
     String? reason;
 
-    // Weather-based recommendations
-    if (weather.toLowerCase().contains('rain')) {
-      // Recommend cab during rain
+    if (currentHour >= 12 && currentHour < 14) {
+      recommended = sortedByTime.first;
+      reason = 'Quick delivery for lunch time';
+    } else if (currentHour >= 19 && currentHour < 21) {
+      recommended = sortedByTime.first;
+      reason = 'Fast delivery for dinner';
+    } else if (weather.toLowerCase().contains('rain')) {
       recommended = options.firstWhere(
-        (o) => o.type == CommuteType.cab,
-        orElse: () => sortedByPrice.first,
+        (o) => o.restaurant.distance < 2.0,
+        orElse: () => sortedByTime.first,
       );
-      reason = 'Recommended due to rainy weather';
-    } else if (currentHour >= 22 || currentHour <= 5) {
-      // Late night - recommend cab
-      recommended = options.firstWhere(
-        (o) => o.type == CommuteType.cab,
-        orElse: () => sortedByPrice.first,
-      );
-      reason = 'Recommended for safety during late hours';
-    } else if (weather.toLowerCase().contains('sunny') || weather.toLowerCase().contains('clear')) {
-      // Good weather - recommend bike for cost savings
-      recommended = options.firstWhere(
-        (o) => o.type == CommuteType.bike && o.provider != CommuteProvider.ownVehicle,
-        orElse: () => sortedByPrice.first,
-      );
-      reason = 'Best option - Good weather & economical';
+      reason = 'Nearby restaurant due to rain';
     } else {
-      // Default - recommend cheapest
       recommended = sortedByPrice.first;
-      reason = 'Most economical option';
+      reason = 'Best value for money';
     }
 
     return options.map((option) {
       if (option == recommended) {
-        return CommuteOption(
+        return FoodOption(
+          restaurant: option.restaurant,
           provider: option.provider,
-          type: option.type,
+          dishName: option.dishName,
           price: option.price,
-          etaMinutes: option.etaMinutes,
-          arrivalMinutes: option.arrivalMinutes,
-          distance: option.distance,
+          deliveryTimeMinutes: option.deliveryTimeMinutes,
+          deliveryFee: option.deliveryFee,
           isRecommended: true,
           reason: reason,
+          locationType: option.locationType,
         );
       }
       return option;
     }).toList();
   }
 
-  double _calculateDistance(LocationModel from, LocationModel to) {
-    // Haversine formula
-    const R = 6371; // Earth's radius in km
-
-    final lat1 = from.latitude * pi / 180;
-    final lat2 = to.latitude * pi / 180;
-    final dLat = (to.latitude - from.latitude) * pi / 180;
-    final dLon = (to.longitude - from.longitude) * pi / 180;
-
-    final a = sin(dLat / 2) * sin(dLat / 2) +
-        cos(lat1) * cos(lat2) * sin(dLon / 2) * sin(dLon / 2);
-    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
-
-    return R * c;
-  }
-
-  String getDeepLink(CommuteOption option) {
+  String getDeepLink(FoodOption option) {
     switch (option.provider) {
-      case CommuteProvider.rapido:
-        return 'https://rapido.bike/';
-      case CommuteProvider.ola:
-        return 'https://www.olacabs.com/';
-      case CommuteProvider.uber:
-        return 'https://www.uber.com/';
+      case FoodProvider.swiggy:
+        return 'https://www.swiggy.com/';
+      case FoodProvider.zomato:
+        return 'https://www.zomato.com/';
       default:
         return '';
     }
