@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Existing keys... -->
+    
+    <!-- Location Permissions -->
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>ETAIM needs your location to provide accurate commute recommendations</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>ETAIM needs your location to provide accurate commute recommendations</string>
+    
+    <!-- Other existing keys... -->
+</dict>
+</plist>
